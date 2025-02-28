@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Login & Online Users</title>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; }
+        #user-panel { width: 200px; background: #f4f4f4; padding: 10px; }
+        #login-section, #chat-section { margin: 20px; }
+        #chat-section { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="user-panel">
+        <h3>Online Users</h3>
+        <ul id="online-users"></ul>
+    </div>
+
+    <div id="login-section">
+        <h2>Login</h2>
+        <input type="email" id="email" placeholder="Email" required><br>
+        <input type="password" id="password" placeholder="Password" required><br>
+        <button onclick="login()">Login</button>
+        <p id="login-message"></p>
+    </div>
+
+    <div id="chat-section">
+        <h2>Chat</h2>
+        <input type="text" id="message" placeholder="Type a message">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <script>
+        let socket;
+        
+        function login() {
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+
+            socket = new WebSocket("ws://localhost:5148");
+
+            socket.onopen = function() {
+                socket.send(JSON.stringify({ email, password }));
+            };
+
+            socket.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (data.status === "success") {
+                    document.getElementById("login-message").innerText = "Login successful!";
+                    document.getElementById("login-section").style.display = "none";
+                    document.getElementById("chat-section").style.display = "block";
+                } else if (data.status === "error") {
+                    document.getElementById("login-message").innerText = "Invalid credentials.";
+                } else if (data.type === "user_list") {
+                    updateUserList(data.users);
+                }
+            };
+
+            socket.onerror = function() {
+                document.getElementById("login-message").innerText = "Connection error!";
+            };
+
+            socket.onclose = function() {
+                console.log("Disconnected");
+            };
+        }
+
+        function sendMessage() {
+            const message = document.getElementById("message").value;
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(message);
+            }
+        }
+
+        function updateUserList(users) {
+            const userList = document.getElementById("online-users");
+            userList.innerHTML = "";
+            users.forEach(user => {
+                const li = document.createElement("li");
+                li.textContent = user;
+                userList.appendChild(li);
+            });
+        }
+    </script>
+
+</body>
+</html>
